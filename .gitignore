@@ -1,3 +1,8 @@
+# some stockfish files I don't want to publish
+AUTHORS
+.travis.yml
+appveyor.yml
+/tests/
 # Visual Studio files
 /.vs/
 # Visual Studio project files
