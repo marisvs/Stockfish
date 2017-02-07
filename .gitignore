@@ -3,7 +3,12 @@ AUTHORS
 .travis.yml
 appveyor.yml
 /tests/
+
 # Visual Studio files
 /.vs/
+/Debug/
+/x64/Release/*
+!/x64/Release/Stockfish.exe
+
 # Visual Studio project files
 Stockfish2.*
