@@ -132,34 +132,18 @@ namespace {
     Move pv[3];
   };
 
-  // Set of rows with half bits set to 1 and half to 0. It is used to allocate
-  // the search depths across the threads.
-  typedef std::vector<int> Row;
+  // skip half of the plies in blocks depending on the helper thread idx.
+  bool skip_ply(int idx, int ply) {
 
-  const Row HalfDensity[] = {
-    {0, 1},
-    {1, 0},
-    {0, 0, 1, 1},
-    {0, 1, 1, 0},
-    {1, 1, 0, 0},
-    {1, 0, 0, 1},
-    {0, 0, 0, 1, 1, 1},
-    {0, 0, 1, 1, 1, 0},
-    {0, 1, 1, 1, 0, 0},
-    {1, 1, 1, 0, 0, 0},
-    {1, 1, 0, 0, 0, 1},
-    {1, 0, 0, 0, 1, 1},
-    {0, 0, 0, 0, 1, 1, 1, 1},
-    {0, 0, 0, 1, 1, 1, 1, 0},
-    {0, 0, 1, 1, 1, 1, 0 ,0},
-    {0, 1, 1, 1, 1, 0, 0 ,0},
-    {1, 1, 1, 1, 0, 0, 0 ,0},
-    {1, 1, 1, 0, 0, 0, 0 ,1},
-    {1, 1, 0, 0, 0, 0, 1 ,1},
-    {1, 0, 0, 0, 0, 1, 1 ,1},
-  };
+    idx = (idx - 1) % 20 + 1; // cycle after 20 threads.
 
-  const size_t HalfDensitySize = std::extent<decltype(HalfDensity)>::value;
+    // number of successive plies to skip, depending on idx.
+    int ones = 1;
+    while (ones * (ones + 1) < idx)
+        ones++;
+
+    return ((ply + idx - 1) / ones - ones) % 2 == 0;
+  }
 
   EasyMoveManager EasyMove;
   Value DrawValue[COLOR_NB];
@@ -379,14 +363,9 @@ void Thread::search() {
          && !Signals.stop
          && (!Limits.depth || Threads.main()->rootDepth / ONE_PLY <= Limits.depth))
   {
-      // Set up the new depths for the helper threads skipping on average every
-      // 2nd ply (using a half-density matrix).
-      if (!mainThread)
-      {
-          const Row& row = HalfDensity[(idx - 1) % HalfDensitySize];
-          if (row[(rootDepth / ONE_PLY + rootPos.game_ply()) % row.size()])
-             continue;
-      }
+      // skip plies for helper threads
+      if (idx && skip_ply(idx, rootDepth / ONE_PLY + rootPos.game_ply()))
+          continue;
 
       // Age out PV variability metric
       if (mainThread)
@@ -423,7 +402,7 @@ void Thread::search() {
               // search the already searched PV lines are preserved.
               std::stable_sort(rootMoves.begin() + PVIdx, rootMoves.end());
 
-              // If search has been stopped, break immediately. Sorting and
+              // If search has been stopped, we break immediately. Sorting and
               // writing PV back to TT is safe because RootMoves is still
               // valid, although it refers to the previous iteration.
               if (Signals.stop)
@@ -505,7 +484,7 @@ void Thread::search() {
 
               bool doEasyMove =   rootMoves[0].pv[0] == easyMove
                                && mainThread->bestMoveChanges < 0.03
-                               && Time.elapsed() > Time.optimum() * 5 / 42;
+                               && Time.elapsed() > Time.optimum() * 5 / 44;
 
               if (   rootMoves.size() == 1
                   || Time.elapsed() > Time.optimum() * unstablePvFactor * improvingFactor / 628
@@ -564,7 +543,7 @@ namespace {
     Key posKey;
     Move ttMove, move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, ttValue, eval, nullValue;
+    Value bestValue, value, ttValue, eval;
     bool ttHit, inCheck, givesCheck, singularExtensionNode, improving;
     bool captureOrPromotion, doFullDepthSearch, moveCountPruning;
     Piece moved_piece;
@@ -733,7 +712,6 @@ namespace {
     // Step 6. Razoring (skipped when in check)
     if (   !PvNode
         &&  depth < 4 * ONE_PLY
-        &&  ttMove == MOVE_NONE
         &&  eval + razor_margin[depth / ONE_PLY] <= alpha)
     {
         if (depth <= ONE_PLY)
@@ -768,8 +746,8 @@ namespace {
         Depth R = ((823 + 67 * depth / ONE_PLY) / 256 + std::min((eval - beta) / PawnValueMg, 3)) * ONE_PLY;
 
         pos.do_null_move(st);
-        nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1)
-                                      : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
+        Value nullValue = depth-R < ONE_PLY ? -qsearch<NonPV, false>(pos, ss+1, -beta, -beta+1)
+                                            : - search<NonPV>(pos, ss+1, -beta, -beta+1, depth-R, !cutNode, true);
         pos.undo_null_move();
 
         if (nullValue >= beta)
