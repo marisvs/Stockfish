@@ -1085,6 +1085,9 @@ moves_loop: // When in check search starts from here
               rm.score = -VALUE_INFINITE;
       }
 
+	  // print score
+	  sync_cout << " score " << UCI::value(value) << sync_endl;
+
       if (value > bestValue)
       {
           bestValue = value;

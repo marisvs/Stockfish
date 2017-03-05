@@ -24,6 +24,7 @@
 #include <cstring> // For std::memset, std::memcmp
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -704,6 +705,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   ++st->rule50;
   ++st->pliesFromNull;
 
+  // dump move to screen, just to see it
+  sync_cout << "node " << nodes << " ply " << Position::gamePly << " " << UCI::move(m, Position::is_chess960()) << sync_endl;
+
   Color us = sideToMove;
   Color them = ~us;
   Square from = from_sq(m);
@@ -730,6 +734,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   if (captured)
   {
+	  // display captured piece
+	  sync_cout << "capture " << PieceToChar[captured] << sync_endl;
+
       Square capsq = to;
 
       // If the captured piece is a pawn, update pawn hash key, otherwise
@@ -805,6 +812,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       else if (type_of(m) == PROMOTION)
       {
           Piece promotion = make_piece(us, promotion_type(m));
+
+		  // display promoted piece
+		  sync_cout << "promotion " << PieceToChar[promotion] << sync_endl;
 
           assert(relative_rank(us, to) == RANK_8);
           assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);

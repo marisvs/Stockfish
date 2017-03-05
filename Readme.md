@@ -7,7 +7,7 @@ Continued development on hardware and software has made chess engines unbeatable
 
 Of course, computers play chess in a different way, but why are they not able to communicate more about a position than just the evaluation: a single numeric value.
 
-Hence the goal of the **Cognitive Chess* project:
+Hence the goal of the *Cognitive Chess* project:
 *Develop programs that help human players improve their skills, that can communicate in human understandable terms about chess*
 
 
@@ -25,6 +25,10 @@ For this purpose [Stockfish] (https://github.com/official-stockfish/Stockfish) i
 * How about training a neural with positional and strategic features more close to how human players think about chess?
 
 
+### This project is about modifying Stockfish
+
+The code has been slightly adapted to print during search every position (node) and also print the evaluation score when available.
+(more to be added later)
 
 ### Terms of use
 
